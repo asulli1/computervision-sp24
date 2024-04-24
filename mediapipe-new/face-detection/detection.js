@@ -1,11 +1,11 @@
-// https://developers.google.com/mediapipe/solutions/vision/pose_landmarker/web_js
-// original demo: https://codepen.io/mediapipe-preview/pen/abRLMxN
+// https://developers.google.com/mediapipe/solutions/vision/face_detector/web_js
+// original demo: https://codepen.io/mediapipe-preview/pen/OJByWQr
 
 import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-const { PoseLandmarker, FilesetResolver } = vision;
+const { FaceDetector, FilesetResolver, Detection } = vision;
 
-let poseLandmarker;
+let faceDetector;
 let results;
 let runningMode = "VIDEO";
 let observers = [];
@@ -17,25 +17,25 @@ video.style.height = h + "px";
 video.setAttribute("width", w);
 video.setAttribute("height", h);
 
-async function createPoseLandmarker() {
-  const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-  poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
+async function createFaceDetector() {
+  const filesetResolver = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+  );
+  faceDetector = await FaceDetector.createFromOptions(filesetResolver, {
     baseOptions: {
-      modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+      modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
       delegate: "GPU",
     },
-    numPoses: 10,
-    minPoseDetectionConfidence: 0.5,
-    minPosePresenceConfidence: 0.5,
-    minTrackingConfidence: 0.5,
-    outputSegmentationMasks: true,
-    runningMode,
+    minDetectionConfidence: 0.5,
+    minSuppressionThreshold: 0.3,
+    runningMode: runningMode,
   });
 
+  // option_var_1_web_js
   enableCam();
 }
 
-createPoseLandmarker();
+createFaceDetector();
 
 // Check if webcam access is supported.
 function hasGetUserMedia() {
@@ -49,8 +49,8 @@ if (!hasGetUserMedia()) {
 
 // Enable the live webcam view and start detection.
 function enableCam() {
-  if (!poseLandmarker) {
-    console.log("Wait! poseLandmarker not loaded yet.");
+  if (!faceDetector) {
+    console.log("Wait! faceLandmarker not loaded yet.");
     return;
   }
 
@@ -71,17 +71,16 @@ function enableCam() {
 
 let lastVideoTime = -1;
 results = undefined;
-// const drawingUtils = new DrawingUtils(canvasCtx);
 
 async function predictWebcam() {
-
   let startTimeMs = performance.now();
   if (lastVideoTime !== video.currentTime) {
     lastVideoTime = video.currentTime;
-    results = poseLandmarker.detectForVideo(video, startTimeMs);
-  }
-  if (results.landmarks) {
-    notifyObservers(results);
+    results = faceDetector.detectForVideo(video, startTimeMs);
+
+    if (results.detections.length > 0) {
+      notifyObservers(results);
+    }
   }
 
   // Call this function again to keep predicting when the browser is ready.
